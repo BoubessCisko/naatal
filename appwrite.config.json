@@ -1,0 +1,128 @@
+{
+  "projectId": "6a159b4d000f669ad1a9",
+  "projectName": "Naatal",
+  "tablesDB": [
+    {
+      "$id": "naatal",
+      "name": "Naatal",
+      "enabled": true
+    }
+  ],
+  "tables": [
+    {
+      "$id": "users",
+      "databaseId": "naatal",
+      "name": "users",
+      "enabled": true,
+      "rowSecurity": true,
+      "$permissions": ["create(\"users\")"],
+      "columns": [
+        { "key": "phone", "type": "string", "required": true, "array": false, "size": 20, "encrypt": false },
+        { "key": "full_name", "type": "string", "required": false, "array": false, "size": 120, "encrypt": false },
+        { "key": "nin_hash", "type": "string", "required": false, "array": false, "size": 128, "encrypt": false },
+        { "key": "cni_photo_id", "type": "string", "required": false, "array": false, "size": 64, "encrypt": false },
+        { "key": "cni_photo_verso_id", "type": "string", "required": false, "array": false, "size": 64, "encrypt": false },
+        { "key": "cni_verified", "type": "boolean", "required": false, "array": false, "default": false }
+      ],
+      "indexes": [
+        { "key": "phone_unique", "type": "unique", "columns": ["phone"], "orders": ["ASC"] },
+        { "key": "nin_unique", "type": "unique", "columns": ["nin_hash"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "contracts",
+      "databaseId": "naatal",
+      "name": "contracts",
+      "enabled": true,
+      "rowSecurity": true,
+      "$permissions": ["create(\"users\")"],
+      "columns": [
+        { "key": "reference", "type": "string", "required": true, "array": false, "size": 32, "encrypt": false },
+        { "key": "type", "type": "string", "required": true, "array": false, "size": 16, "format": "enum", "elements": ["vente", "pret", "service", "location"] },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 16, "format": "enum", "elements": ["draft", "pending", "active", "locked"], "default": "draft" },
+        { "key": "amount", "type": "double", "required": false, "array": false },
+        { "key": "currency", "type": "string", "required": false, "array": false, "size": 8, "default": "FCFA" },
+        { "key": "due_date", "type": "datetime", "required": false, "array": false },
+        { "key": "summary", "type": "string", "required": false, "array": false, "size": 8192, "default": "{}" },
+        { "key": "integrity_hash", "type": "string", "required": false, "array": false, "size": 128, "encrypt": false },
+        { "key": "created_by", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "locked_at", "type": "datetime", "required": false, "array": false }
+      ],
+      "indexes": [
+        { "key": "reference_unique", "type": "unique", "columns": ["reference"], "orders": ["ASC"] },
+        { "key": "created_by_idx", "type": "key", "columns": ["created_by"], "orders": ["ASC"] },
+        { "key": "status_idx", "type": "key", "columns": ["status"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "contract_parties",
+      "databaseId": "naatal",
+      "name": "contract_parties",
+      "enabled": true,
+      "rowSecurity": true,
+      "$permissions": ["create(\"users\")"],
+      "columns": [
+        { "key": "contract_id", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "user_id", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "role", "type": "string", "required": true, "array": false, "size": 16, "format": "enum", "elements": ["initiateur", "partie", "temoin"] },
+        { "key": "has_validated", "type": "boolean", "required": false, "array": false, "default": false },
+        { "key": "validated_at", "type": "datetime", "required": false, "array": false },
+        { "key": "otp_verified", "type": "boolean", "required": false, "array": false, "default": false }
+      ],
+      "indexes": [
+        { "key": "contract_idx", "type": "key", "columns": ["contract_id"], "orders": ["ASC"] },
+        { "key": "user_idx", "type": "key", "columns": ["user_id"], "orders": ["ASC"] },
+        { "key": "contract_user_unique", "type": "unique", "columns": ["contract_id", "user_id"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "$id": "audio_files",
+      "databaseId": "naatal",
+      "name": "audio_files",
+      "enabled": true,
+      "rowSecurity": true,
+      "$permissions": ["create(\"users\")"],
+      "columns": [
+        { "key": "contract_id", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "question_index", "type": "integer", "required": true, "array": false, "min": 0, "max": 99 },
+        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 64, "encrypt": false },
+        { "key": "duration_seconds", "type": "integer", "required": false, "array": false, "min": 0, "max": 600 },
+        { "key": "file_hash", "type": "string", "required": true, "array": false, "size": 128, "encrypt": false }
+      ],
+      "indexes": [
+        { "key": "contract_idx", "type": "key", "columns": ["contract_id"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "audit_log",
+      "databaseId": "naatal",
+      "name": "audit_log",
+      "enabled": true,
+      "rowSecurity": true,
+      "$permissions": [],
+      "columns": [
+        { "key": "contract_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false },
+        { "key": "user_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false },
+        { "key": "action", "type": "string", "required": true, "array": false, "size": 64, "encrypt": false },
+        { "key": "metadata", "type": "string", "required": false, "array": false, "size": 4096, "default": "{}" }
+      ],
+      "indexes": [
+        { "key": "contract_idx", "type": "key", "columns": ["contract_id"], "orders": ["ASC"] }
+      ]
+    }
+  ],
+  "buckets": [
+    {
+      "$id": "files",
+      "name": "files",
+      "enabled": true,
+      "$permissions": ["create(\"users\")"],
+      "fileSecurity": true,
+      "maximumFileSize": 10485760,
+      "allowedFileExtensions": ["m4a", "mp4", "wav", "mp3", "aac", "jpg", "jpeg", "png", "webp"],
+      "compression": "none",
+      "encryption": true,
+      "antivirus": false
+    }
+  ]
+}
