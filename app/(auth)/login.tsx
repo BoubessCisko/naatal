@@ -25,10 +25,10 @@ export default function Login() {
     setLoading(true);
     try {
       const fullPhone = `+221${digits}`;
-      const { userId } = await sendOtp(fullPhone);
+      const result = await sendOtp(fullPhone);
       router.push({
         pathname: '/(auth)/otp',
-        params: { userId, phone: fullPhone },
+        params: { userId: result.userId, phone: fullPhone, secret: result.secret ?? '' },
       });
     } catch (e) {
       Alert.alert(

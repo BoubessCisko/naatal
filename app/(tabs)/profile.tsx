@@ -1,5 +1,6 @@
 import { View, Text, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import { logout } from '../../lib/auth';
@@ -85,9 +86,12 @@ export default function Profile() {
           marginBottom: 24,
         })}
       >
-        <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
-          Se déconnecter
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="log-out" size={20} color="white" />
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
+            Se déconnecter
+          </Text>
+        </View>
       </Pressable>
     </View>
   );

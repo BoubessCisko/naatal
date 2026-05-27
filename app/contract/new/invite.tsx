@@ -2,6 +2,7 @@ import { View, Text, Pressable, Share, Linking, StyleSheet } from 'react-native'
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import { useContractStore } from '../../../store/contractStore';
 
@@ -137,7 +138,10 @@ export default function Invite() {
             { backgroundColor: pressed ? colors.greenDark : colors.green },
           ]}
         >
-          <Text style={styles.ctaText}>Commencer l'enregistrement</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="mic" size={20} color="white" />
+            <Text style={styles.ctaText}>Commencer l'enregistrement</Text>
+          </View>
         </Pressable>
         <Text style={styles.waitHint}>
           L'autre partie pourra rejoindre en temps réel depuis son téléphone.

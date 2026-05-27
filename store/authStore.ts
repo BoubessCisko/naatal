@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { account, databases, DB_ID, COLLECTIONS } from '../lib/appwrite';
+import { account, databases, DB_ID, COLLECTIONS, cookieReady } from '../lib/appwrite';
 import type { UserDoc } from '../types';
 
 type AuthState = {
@@ -16,6 +16,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
 
   loadSession: async () => {
+    await cookieReady;
     try {
       const me = await account.get();
       try {

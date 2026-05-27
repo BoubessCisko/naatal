@@ -351,6 +351,50 @@ fileSecurity:true garantit qu'aucune fuite croisée n'est possible.
 
 ---
 
+### 📱 Metro — Bundling qui freeze sur Windows
+
+```
+27 mai 2026 — Metro freeze à 56-99% sur Windows
+Problème : Metro hang indéfiniment à un pourcentage variable (56%, 87%, 88%, 92%, 99%).
+  L'app ne se charge jamais dans Expo Go.
+Cause racine : combinaison de 3 facteurs sur Windows :
+  1. Metro lance trop de workers en parallèle → saturation I/O NTFS
+  2. Metro scanne des dossiers inutiles (appwrite/functions/, contexe/)
+  3. @expo/vector-icons importé via barrel export charge tout le registre d'icônes
+Solutions appliquées (les 3 ensemble) :
+  1. metro.config.js → maxWorkers: 1 (évite la contention I/O Windows)
+  2. metro.config.js → blockList: [/appwrite\/functions\/.*/, /contexe\/.*/]
+  3. import Ionicons from '@expo/vector-icons/Ionicons' (PAS { Ionicons } from '@expo/vector-icons')
+Si ça hang encore : npx expo start --clear --no-dev
+Temps perdu si pas su : 2h+ de redémarrages à l'aveugle.
+```
+
+```
+27 mai 2026 — Appwrite Realtime crash "Cannot read property 'getItem' of undefined"
+Problème : le SDK Appwrite utilise window.localStorage pour les cookies de session.
+  React Native n'a pas de window.localStorage → crash au premier événement Realtime.
+Solution : polyfill dans lib/appwrite.ts — objet en mémoire + sync AsyncStorage.
+  Le setItem persiste vers AsyncStorage, le getItem lit le cache mémoire.
+  cookieReady (Promise) hydrate le cache au démarrage — toujours l'attendre
+  avant d'appeler account.get() ou killExistingSession().
+```
+
+```
+27 mai 2026 — Sessions anonymes Appwrite = mauvaise architecture pour phone auth
+Problème : createAnonymousSession() crée un NOUVEL utilisateur Appwrite à chaque appel.
+  Même numéro de téléphone → nouvel userId → conflit unique index sur phone →
+  "Document with requested ID already exists".
+  Pas patchable : le modèle anonymous session ≠ phone-based identity.
+Cause racine : le mode dev utilisait des sessions anonymes au lieu du vrai flow phone auth.
+Solution : utiliser account.createPhoneToken() + account.createSession() dans TOUS les cas.
+  En dev sans Twilio : appeler l'API REST Appwrite avec l'API key pour créer
+  l'utilisateur + token côté serveur (devAuth dans lib/auth.ts).
+  En prod : Twilio envoie le SMS.
+  JAMAIS de createAnonymousSession().
+```
+
+---
+
 ### 📱 UI — NativeWind v4
 
 *Aucune leçon encore*
@@ -359,7 +403,14 @@ fileSecurity:true garantit qu'aucune fuite croisée n'est possible.
 
 ### 🧭 Navigation — Expo Router v5
 
-*Aucune leçon encore*
+```
+27 mai 2026 — Auth guard bloque les routes contract/*
+Problème : le guard dans _layout.tsx redirige vers /(tabs) si l'utilisateur
+  n'est pas dans (tabs) ou (auth). Résultat : naviguer vers /contract/new/voice
+  fait un flash puis retour immédiat au home.
+Solution : ajouter seg[0] === 'contract' dans la condition inAppScreen.
+  const inAppScreen = inTabsGroup || seg[0] === 'contract';
+```
 
 ---
 

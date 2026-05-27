@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import { useContractStore } from '../../../store/contractStore';
 import {
@@ -16,7 +17,9 @@ import {
   databases,
   DB_ID,
   COLLECTIONS,
+  Query,
 } from '../../../lib/appwrite';
+import { batchUploadAudios } from '../../../lib/audioUpload';
 
 type PaymentStep = 'instructions' | 'submitting' | 'done';
 
@@ -43,7 +46,19 @@ export default function Payment() {
         return;
       }
 
-      setProgress('Activation du contrat…');
+      // Batch upload all recorded audios to Appwrite Storage
+      setProgress('Upload des enregistrements…');
+      const partiesRes = await databases.listDocuments(DB_ID, COLLECTIONS.parties, [
+        Query.equal('contract_id', contractId),
+        Query.limit(10),
+      ]);
+      const partyUserIds = partiesRes.documents
+        .map((p: any) => p.user_id)
+        .filter(Boolean);
+
+      const uploaded = await batchUploadAudios(contractId, partyUserIds);
+      setProgress(`${uploaded} audio(s) uploadé(s). Activation…`);
+
       await databases.updateDocument(
         DB_ID,
         COLLECTIONS.contracts,
@@ -97,7 +112,10 @@ export default function Payment() {
             },
           ]}
         >
-          <Text style={styles.ctaText}>Retour à l'accueil</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="home" size={20} color="white" />
+            <Text style={styles.ctaText}>Retour à l'accueil</Text>
+          </View>
         </Pressable>
       </View>
     );
@@ -153,7 +171,10 @@ export default function Payment() {
             { backgroundColor: pressed ? colors.greenDark : colors.green },
           ]}
         >
-          <Text style={styles.ctaText}>Confirmer le paiement</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="card" size={20} color="white" />
+            <Text style={styles.ctaText}>Confirmer le paiement</Text>
+          </View>
         </Pressable>
       </View>
     </View>

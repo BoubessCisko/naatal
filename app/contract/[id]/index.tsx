@@ -11,6 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import {
   account,
@@ -260,9 +261,12 @@ export default function ContractDetail() {
                 { backgroundColor: pressed ? colors.surface : colors.surface2 },
               ]}
             >
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                Enregistrement vocal
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="mic" size={20} color={colors.text} />
+                <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                  Enregistrement vocal
+                </Text>
+              </View>
             </Pressable>
           )}
 
@@ -279,9 +283,10 @@ export default function ContractDetail() {
                 { backgroundColor: pressed ? '#c8850a' : colors.gold },
               ]}
             >
-              <Text style={styles.actionButtonText}>
-                Valider avec OTP
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="checkmark-circle" size={20} color="white" />
+                <Text style={styles.actionButtonText}>Valider avec OTP</Text>
+              </View>
             </Pressable>
           )}
 
@@ -304,9 +309,10 @@ export default function ContractDetail() {
               {locking ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <Text style={styles.actionButtonText}>
-                  Verrouiller le dossier
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="lock-closed" size={20} color="white" />
+                  <Text style={styles.actionButtonText}>Verrouiller le dossier</Text>
+                </View>
               )}
             </Pressable>
           )}
@@ -321,9 +327,12 @@ export default function ContractDetail() {
               },
             ]}
           >
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              Télécharger PDF
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="document-text" size={20} color={colors.text} />
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
+                Télécharger PDF
+              </Text>
+            </View>
           </Pressable>
         </View>
       </ScrollView>

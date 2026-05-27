@@ -1,5 +1,30 @@
 import { Client, Account, Databases, Storage, Functions, Realtime, ID, Query, Permission, Role } from 'react-native-appwrite';
 import { Channel } from 'react-native-appwrite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Appwrite SDK uses window.localStorage for session cookie fallback.
+// React Native has no localStorage — polyfill with in-memory cache + AsyncStorage sync.
+const cookieCache: Record<string, string> = {};
+let cookieHydrated = false;
+
+export const cookieReady = AsyncStorage.getItem('cookieFallback').then((v) => {
+  if (v) cookieCache['cookieFallback'] = v;
+  cookieHydrated = true;
+});
+
+if (typeof window !== 'undefined' && !window.localStorage) {
+  (window as any).localStorage = {
+    getItem: (key: string) => cookieCache[key] ?? null,
+    setItem: (key: string, value: string) => {
+      cookieCache[key] = value;
+      AsyncStorage.setItem(key, value).catch(() => {});
+    },
+    removeItem: (key: string) => {
+      delete cookieCache[key];
+      AsyncStorage.removeItem(key).catch(() => {});
+    },
+  };
+}
 
 const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;

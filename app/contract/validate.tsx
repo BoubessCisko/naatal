@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../constants/colors';
 import {
   account,
@@ -20,9 +21,6 @@ import {
   COLLECTIONS,
   Query,
 } from '../../lib/appwrite';
-import { DEV_OTP_CODE } from '../../lib/auth';
-
-const USE_REAL_OTP = process.env.EXPO_PUBLIC_USE_REAL_OTP === 'true';
 
 export default function ValidateContract() {
   const { contractId } = useLocalSearchParams<{ contractId: string }>();
@@ -32,6 +30,7 @@ export default function ValidateContract() {
   const [sending, setSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [step, setStep] = useState<'send' | 'verify' | 'done'>('send');
+  const [tokenUserId, setTokenUserId] = useState('');
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -43,10 +42,9 @@ export default function ValidateContract() {
   const handleSendOtp = async () => {
     setSending(true);
     try {
-      if (USE_REAL_OTP) {
-        const me = await account.get();
-        await account.createPhoneToken(me.$id, me.phone);
-      }
+      const me = await account.get();
+      const token = await account.createPhoneToken(me.$id, me.phone);
+      setTokenUserId(token.userId);
       setStep('verify');
       setCountdown(60);
     } catch (e) {
@@ -63,14 +61,7 @@ export default function ValidateContract() {
     if (finalCode.length !== 6 || loading) return;
     setLoading(true);
     try {
-      if (USE_REAL_OTP) {
-        const me = await account.get();
-        await account.createSession(me.$id, finalCode);
-      } else {
-        if (finalCode !== DEV_OTP_CODE) {
-          throw new Error(`Code incorrect. En mode dev, utilisez ${DEV_OTP_CODE}.`);
-        }
-      }
+      await account.createSession(tokenUserId, finalCode);
 
       // Mark this party as validated
       const me = await account.get();
@@ -133,7 +124,7 @@ export default function ValidateContract() {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top }]}>
         <View style={styles.successBadge}>
-          <Text style={{ fontSize: 48 }}>✓</Text>
+          <Ionicons name="checkmark-circle" size={48} color={colors.green} />
         </View>
         <Text style={styles.successTitle}>Validation confirmée !</Text>
         <Text style={styles.successSub}>
@@ -150,7 +141,10 @@ export default function ValidateContract() {
             },
           ]}
         >
-          <Text style={styles.ctaText}>Retour au contrat</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="arrow-back" size={20} color="white" />
+            <Text style={styles.ctaText}>Retour au contrat</Text>
+          </View>
         </Pressable>
       </View>
     );
@@ -161,7 +155,7 @@ export default function ValidateContract() {
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Valider le contrat</Text>
         </View>
@@ -174,14 +168,6 @@ export default function ValidateContract() {
               Ce code prouve votre consentement.
             </Text>
           </View>
-
-          {!USE_REAL_OTP && (
-            <View style={styles.devBanner}>
-              <Text style={styles.devText}>
-                Mode dev : le code sera {DEV_OTP_CODE}
-              </Text>
-            </View>
-          )}
 
           <View style={{ flex: 1 }} />
 
@@ -202,7 +188,10 @@ export default function ValidateContract() {
             {sending ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
-              <Text style={styles.ctaText}>Envoyer le code</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="send" size={18} color="white" />
+                <Text style={styles.ctaText}>Envoyer le code</Text>
+              </View>
             )}
           </Pressable>
         </View>
@@ -220,7 +209,7 @@ export default function ValidateContract() {
     >
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Code de vérification</Text>
       </View>
@@ -229,12 +218,6 @@ export default function ValidateContract() {
         <Text style={styles.subtitle}>
           Entrez le code à 6 chiffres reçu par SMS.
         </Text>
-
-        {!USE_REAL_OTP && (
-          <Text style={styles.devHint}>
-            Mode dev : utilisez le code {DEV_OTP_CODE}
-          </Text>
-        )}
 
         <Pressable onPress={() => inputRef.current?.focus()}>
           <View style={styles.boxRow}>
@@ -294,63 +277,29 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: colors.surface, gap: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center',
   },
-  backText: { color: colors.text, fontSize: 18 },
-  headerTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  headerTitle: { color: colors.text, fontSize: 16, fontWeight: '600' as const },
   content: { flex: 1, padding: 24, gap: 24 },
   title: { color: colors.text, fontSize: 26, fontWeight: '700' },
   subtitle: { color: colors.muted, fontSize: 14, lineHeight: 20 },
-  devBanner: {
-    backgroundColor: 'rgba(245,166,35,0.15)',
-    padding: 12,
-    borderRadius: 12,
-  },
-  devText: { color: colors.gold, fontSize: 13, fontWeight: '600' },
-  devHint: { color: colors.gold, fontSize: 13, fontWeight: '600' },
-  boxRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
+  boxRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   box: {
-    flex: 1,
-    aspectRatio: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1, aspectRatio: 1, backgroundColor: colors.surface,
+    borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
   boxDigit: { color: colors.text, fontSize: 24, fontWeight: '600' },
-  cta: {
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
+  cta: { paddingVertical: 16, borderRadius: 14, alignItems: 'center' },
   ctaText: { color: 'white', fontSize: 16, fontWeight: '600' },
   successBadge: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(0,168,132,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(0,168,132,0.2)', alignItems: 'center', justifyContent: 'center',
   },
   successTitle: { color: colors.text, fontSize: 26, fontWeight: '700', marginTop: 20 },
   successSub: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 8 },

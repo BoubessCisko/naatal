@@ -1,6 +1,4 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import sha256 from 'crypto-js/sha256';
-import Base64 from 'crypto-js/enc-base64';
 import {
   account,
   databases,
@@ -13,95 +11,18 @@ import {
   BUCKETS,
 } from './appwrite';
 
-async function uploadFile(
-  uri: string,
-  filename: string,
-  mimeType: string,
-  partyUserIds: string[]
-): Promise<{ fileId: string; fileSize: number }> {
-  const targetUri = `${FileSystem.cacheDirectory}${filename}`;
-  await FileSystem.copyAsync({ from: uri, to: targetUri });
-
-  try {
-    const info = await FileSystem.getInfoAsync(targetUri);
-    const fileSize = info.exists ? info.size : 0;
-
-    const fileId = ID.unique();
-    const jwt = await account.createJWT();
-    const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!;
-    const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!;
-    const url = `${endpoint}/storage/buckets/${BUCKETS.files}/files`;
-
-    const result = await FileSystem.uploadAsync(url, targetUri, {
-      httpMethod: 'POST',
-      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-      fieldName: 'file',
-      mimeType,
-      parameters: { fileId },
-      headers: {
-        'X-Appwrite-Project': projectId,
-        'X-Appwrite-JWT': jwt.jwt,
-      },
-    });
-
-    if (result.status < 200 || result.status >= 300) {
-      throw new Error(`Upload échoué (${result.status})`);
-    }
-
-    const body = JSON.parse(result.body) as { $id: string };
-
-    await storage.updateFile({
-      bucketId: BUCKETS.files,
-      fileId: body.$id,
-      permissions: partyUserIds.map((uid) => Permission.read(Role.user(uid))),
-    });
-
-    return { fileId: body.$id, fileSize };
-  } finally {
-    FileSystem.deleteAsync(targetUri, { idempotent: true }).catch(() => {});
-  }
-}
-
-// Read entire file as base64 and hash. Audio files are max 10MB (Appwrite
-// bucket limit), base64 = ~13MB string — acceptable on modern phones.
-// The chunked approach had a bug: concatenating base64 chunks breaks padding
-// alignment, producing a wrong hash for multi-chunk files.
-async function hashFile(uri: string): Promise<string> {
-  const info = await FileSystem.getInfoAsync(uri);
-  if (!info.exists) return sha256('').toString();
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return sha256(Base64.parse(base64)).toString();
-}
-
-export async function uploadAndSaveAudio(params: {
-  uri: string;
+// Save audio metadata to Appwrite WITHOUT uploading the file.
+// The local URI is stored so the recording party can play it back.
+// The file_id stays empty until batch upload at payment.
+export async function saveAudioMetadata(params: {
+  localUri: string;
   contractId: string;
   questionIndex: number;
   durationMs: number;
   partyUserIds: string[];
 }): Promise<string> {
-  const { uri, contractId, questionIndex, durationMs, partyUserIds } = params;
+  const { localUri, contractId, questionIndex, durationMs, partyUserIds } = params;
   const me = await account.get();
-  const filename = `${contractId}-q${questionIndex}-${Date.now()}.m4a`;
-
-  // Upload file first, then hash. If upload fails we don't waste time hashing.
-  const { fileId } = await uploadFile(uri, filename, 'audio/mp4', partyUserIds);
-
-  let fileHash: string;
-  try {
-    fileHash = await hashFile(uri);
-  } catch {
-    fileHash = '';
-  }
-
-  // Both parties get read permission on the audio_files doc.
-  // Only the uploader gets update (for re-record delete).
-  const docPermissions = [
-    ...partyUserIds.map((uid) => Permission.read(Role.user(uid))),
-    Permission.update(Role.user(me.$id)),
-  ];
 
   const doc = await databases.createDocument(
     DB_ID,
@@ -110,21 +31,100 @@ export async function uploadAndSaveAudio(params: {
     {
       contract_id: contractId,
       question_index: questionIndex,
-      file_id: fileId,
+      file_id: '',
       duration_seconds: Math.round(durationMs / 1000),
-      file_hash: fileHash,
+      file_hash: '',
       recorded_by: me.$id,
     },
-    docPermissions
+    [
+      ...partyUserIds.map((uid) => Permission.read(Role.user(uid))),
+      Permission.update(Role.user(me.$id)),
+    ]
   );
+
+  // Store local URI in documentDirectory for persistence across reloads
+  const localCopy = `${FileSystem.documentDirectory}audio-${doc.$id}.m4a`;
+  try {
+    await FileSystem.copyAsync({ from: localUri, to: localCopy });
+  } catch {
+    // If copy fails, keep original URI
+  }
 
   return doc.$id;
 }
 
+// Batch upload all audios for a contract. Called at payment/finalization.
+// Reads files from documentDirectory (where they were copied during recording).
+export async function batchUploadAudios(
+  contractId: string,
+  partyUserIds: string[]
+): Promise<number> {
+  const me = await account.get();
+  const jwt = await account.createJWT();
+  const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!;
+  const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!;
+
+  // Get all audio docs for this contract that haven't been uploaded yet
+  const res = await databases.listDocuments(DB_ID, COLLECTIONS.audios, [
+    `equal("contract_id", "${contractId}")`,
+    `equal("file_id", "")`,
+  ]);
+
+  let uploaded = 0;
+
+  for (const doc of res.documents) {
+    const localPath = `${FileSystem.documentDirectory}audio-${doc.$id}.m4a`;
+    const info = await FileSystem.getInfoAsync(localPath);
+    if (!info.exists) continue;
+
+    try {
+      const fileId = ID.unique();
+      const url = `${endpoint}/storage/buckets/${BUCKETS.files}/files`;
+
+      const result = await FileSystem.uploadAsync(url, localPath, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
+        mimeType: 'audio/mp4',
+        parameters: { fileId },
+        headers: {
+          'X-Appwrite-Project': projectId,
+          'X-Appwrite-JWT': jwt.jwt,
+        },
+      });
+
+      if (result.status >= 200 && result.status < 300) {
+        const body = JSON.parse(result.body) as { $id: string };
+
+        // Set file permissions
+        await storage.updateFile({
+          bucketId: BUCKETS.files,
+          fileId: body.$id,
+          permissions: partyUserIds.map((uid) => Permission.read(Role.user(uid))),
+        });
+
+        // Update audio doc with file_id
+        await databases.updateDocument(DB_ID, COLLECTIONS.audios, doc.$id, {
+          file_id: body.$id,
+        });
+
+        // Clean up local copy
+        FileSystem.deleteAsync(localPath, { idempotent: true }).catch(() => {});
+        uploaded++;
+      }
+    } catch {}
+  }
+
+  return uploaded;
+}
+
 export async function deleteAudioWithFile(audioDocId: string, fileId: string): Promise<void> {
-  try {
-    await storage.deleteFile(BUCKETS.files, fileId);
-  } catch {}
+  if (fileId) {
+    try { await storage.deleteFile(BUCKETS.files, fileId); } catch {}
+  }
+  // Also delete local copy
+  const localPath = `${FileSystem.documentDirectory}audio-${audioDocId}.m4a`;
+  FileSystem.deleteAsync(localPath, { idempotent: true }).catch(() => {});
   await databases.deleteDocument(DB_ID, COLLECTIONS.audios, audioDocId);
 }
 
@@ -134,7 +134,38 @@ export async function uploadDocument(
   mimeType: string,
   partyUserIds: string[]
 ): Promise<string> {
-  const safeName = `doc-${Date.now()}-${filename}`;
-  const { fileId } = await uploadFile(uri, safeName, mimeType, partyUserIds);
-  return fileId;
+  const jwt = await account.createJWT();
+  const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!;
+  const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!;
+  const fileId = ID.unique();
+
+  const result = await FileSystem.uploadAsync(
+    `${endpoint}/storage/buckets/${BUCKETS.files}/files`,
+    uri,
+    {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'file',
+      mimeType,
+      parameters: { fileId },
+      headers: {
+        'X-Appwrite-Project': projectId,
+        'X-Appwrite-JWT': jwt.jwt,
+      },
+    }
+  );
+
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(`Upload document échoué (${result.status})`);
+  }
+
+  const body = JSON.parse(result.body) as { $id: string };
+
+  await storage.updateFile({
+    bucketId: BUCKETS.files,
+    fileId: body.$id,
+    permissions: partyUserIds.map((uid) => Permission.read(Role.user(uid))),
+  });
+
+  return body.$id;
 }

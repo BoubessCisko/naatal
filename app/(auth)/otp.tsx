@@ -5,26 +5,29 @@ import {
   TextInput,
   Pressable,
   Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { colors } from '../../constants/colors';
-import { verifyOtp, DEV_OTP_CODE } from '../../lib/auth';
+import { verifyOtp } from '../../lib/auth';
 import { useAuthStore } from '../../store/authStore';
 
 const USE_REAL_OTP = process.env.EXPO_PUBLIC_USE_REAL_OTP === 'true';
 
 export default function Otp() {
-  const { userId, phone } = useLocalSearchParams<{
+  const { userId, phone, secret } = useLocalSearchParams<{
     userId: string;
     phone: string;
+    secret?: string;
   }>();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const inputRef = useRef<TextInput>(null);
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
+  const autoVerified = useRef(false);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -32,11 +35,11 @@ export default function Otp() {
     return () => clearTimeout(t);
   }, [countdown]);
 
-  const handleVerify = async (finalCode: string) => {
-    if (finalCode.length !== 6 || loading) return;
+  const handleVerify = async (finalCode: string, devSecret?: string) => {
+    if (loading) return;
     setLoading(true);
     try {
-      await verifyOtp(userId, finalCode, phone);
+      await verifyOtp(userId, finalCode, phone, devSecret);
       await refreshProfile();
       router.replace('/(auth)/kyc');
     } catch (e) {
@@ -50,12 +53,41 @@ export default function Otp() {
     }
   };
 
+  // Dev mode: auto-verify with the server-provided secret
+  useEffect(() => {
+    if (!USE_REAL_OTP && secret && !autoVerified.current) {
+      autoVerified.current = true;
+      handleVerify('', secret);
+    }
+  }, [secret]);
+
   const handleChange = (v: string) => {
     const cleaned = v.replace(/\D/g, '').slice(0, 6);
     setCode(cleaned);
     if (cleaned.length === 6) handleVerify(cleaned);
   };
 
+  // Dev mode: show loading while auto-verifying
+  if (!USE_REAL_OTP && secret && loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.bg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.green} />
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+          Connexion en cours…
+        </Text>
+      </View>
+    );
+  }
+
+  // Real OTP mode: show the 6-digit input
   const boxes = Array.from({ length: 6 }, (_, i) => code[i] ?? '');
 
   return (
@@ -79,18 +111,6 @@ export default function Otp() {
           <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>
             Code envoyé au {phone}.
           </Text>
-          {!USE_REAL_OTP && (
-            <Text
-              style={{
-                color: colors.gold,
-                fontSize: 13,
-                marginTop: 8,
-                fontWeight: '600',
-              }}
-            >
-              Mode dev : utilisez le code {DEV_OTP_CODE}
-            </Text>
-          )}
         </View>
 
         <Pressable onPress={() => inputRef.current?.focus()}>
@@ -126,7 +146,6 @@ export default function Otp() {
           </View>
         </Pressable>
 
-        {/* Input invisible qui capture la saisie */}
         <TextInput
           ref={inputRef}
           value={code}

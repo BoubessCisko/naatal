@@ -1,4 +1,46 @@
 {
+  "permissions": {
+    "allow": [
+      "PowerShell(npm ls expo-file-system 2>$null)",
+      "PowerShell(npx expo start --clear)",
+      "PowerShell(Get-Process -Name node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -Confirm:$false)",
+      "PowerShell(npm ls crypto-js 2>$null)",
+      "PowerShell(if \\(Test-Path \"$env:TEMP\\\\metro-cache\"\\) { Remove-Item -Recurse -Force \"$env:TEMP\\\\metro-cache\" }; if \\(Test-Path \"c:\\\\projects\\\\naatal\\\\naatal\\\\.expo\"\\) { Remove-Item -Recurse -Force \"c:\\\\projects\\\\naatal\\\\naatal\\\\.expo\" })",
+      "PowerShell(npm ls expo-image-picker expo-document-picker 2>$null)",
+      "PowerShell(npx expo install expo-image-picker)",
+      "PowerShell(npx expo install react-native-qrcode-svg react-native-svg)",
+      "PowerShell(npm ls expo-print expo-sharing 2>$null)",
+      "PowerShell(npx expo install expo-print expo-sharing)",
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\projects\\\\naatal\\\\naatal\\\\appwrite\\\\functions\\\\lock-contract\" -Force)",
+      "Bash(mv \"c:\\\\projects\\\\naatal\\\\naatal\\\\app\\\\contract\\\\[id].tsx\" \"c:\\\\projects\\\\naatal\\\\naatal\\\\app\\\\contract\\\\[id]\\\\index.tsx\")",
+      "Bash(git status *)",
+      "Bash(git commit -m ' *)",
+      "PowerShell(npm ls @expo/vector-icons 2>$null)",
+      "PowerShell($env:APPWRITE_ENDPOINT = \"https://fra.cloud.appwrite.io/v1\"; $env:APPWRITE_PROJECT = \"6a159b4d000f669ad1a9\"; $env:APPWRITE_KEY = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $env:APPWRITE_PROJECT; \"X-Appwrite-Key\" = $env:APPWRITE_KEY; \"Content-Type\" = \"application/json\" }; $collections = @\\(\"users\", \"contracts\", \"contract_parties\", \"audio_files\", \"audit_log\"\\); foreach \\($col in $collections\\) { $url = \"$\\($env:APPWRITE_ENDPOINT\\)/databases/naatal/collections/$col/documents\"; try { $res = Invoke-RestMethod -Uri $url -Headers $headers -Method Get; Write-Host \"$col : $\\($res.total\\) documents\" } catch { Write-Host \"$col : error $\\($_.Exception.Message\\)\" } })",
+      "PowerShell($env:APPWRITE_ENDPOINT = \"https://fra.cloud.appwrite.io/v1\"; $env:APPWRITE_PROJECT = \"6a159b4d000f669ad1a9\"; $env:APPWRITE_KEY = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $env:APPWRITE_PROJECT; \"X-Appwrite-Key\" = $env:APPWRITE_KEY; \"Content-Type\" = \"application/json\" }; $collections = @\\(\"audit_log\", \"audio_files\", \"contract_parties\", \"contracts\", \"users\"\\); foreach \\($col in $collections\\) { $url = \"$\\($env:APPWRITE_ENDPOINT\\)/databases/naatal/collections/$col/documents\"; $res = Invoke-RestMethod -Uri $url -Headers $headers -Method Get; foreach \\($doc in $res.documents\\) { $delUrl = \"$url/$\\($doc.'$id'\\)\"; try { Invoke-RestMethod -Uri $delUrl -Headers $headers -Method Delete | Out-Null; Write-Host \"Deleted $col/$\\($doc.'$id'\\)\" } catch { Write-Host \"Failed $col/$\\($doc.'$id'\\): $\\($_.Exception.Message\\)\" } } })",
+      "PowerShell($env:APPWRITE_ENDPOINT = \"https://fra.cloud.appwrite.io/v1\"; $env:APPWRITE_PROJECT = \"6a159b4d000f669ad1a9\"; $env:APPWRITE_KEY = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $env:APPWRITE_PROJECT; \"X-Appwrite-Key\" = $env:APPWRITE_KEY; \"Content-Type\" = \"application/json\" }; $url = \"$\\($env:APPWRITE_ENDPOINT\\)/users\"; $res = Invoke-RestMethod -Uri $url -Headers $headers -Method Get; Write-Host \"$\\($res.total\\) auth users:\"; foreach \\($u in $res.users\\) { Write-Host \"  $\\($u.'$id'\\) | $\\($u.phone\\) | $\\($u.name\\) | created: $\\($u.'$createdAt'\\)\" })",
+      "PowerShell($env:APPWRITE_ENDPOINT = \"https://fra.cloud.appwrite.io/v1\"; $env:APPWRITE_PROJECT = \"6a159b4d000f669ad1a9\"; $env:APPWRITE_KEY = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $env:APPWRITE_PROJECT; \"X-Appwrite-Key\" = $env:APPWRITE_KEY; \"Content-Type\" = \"application/json\" }; $url = \"$\\($env:APPWRITE_ENDPOINT\\)/users\"; $res = Invoke-RestMethod -Uri $url -Headers $headers -Method Get; foreach \\($u in $res.users\\) { $delUrl = \"$url/$\\($u.'$id'\\)\"; try { Invoke-RestMethod -Uri $delUrl -Headers $headers -Method Delete | Out-Null; Write-Host \"Deleted user $\\($u.'$id'\\)\" } catch { Write-Host \"Failed $\\($u.'$id'\\): $\\($_.Exception.Message\\)\" } })",
+      "PowerShell($env:APPWRITE_ENDPOINT = \"https://fra.cloud.appwrite.io/v1\"; $env:APPWRITE_PROJECT = \"6a159b4d000f669ad1a9\"; $env:APPWRITE_KEY = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $env:APPWRITE_PROJECT; \"X-Appwrite-Key\" = $env:APPWRITE_KEY; \"Content-Type\" = \"application/json\" }; $url = \"$\\($env:APPWRITE_ENDPOINT\\)/storage/buckets/files/files\"; $res = Invoke-RestMethod -Uri $url -Headers $headers -Method Get; Write-Host \"$\\($res.total\\) files in Storage\"; foreach \\($f in $res.files\\) { $delUrl = \"$url/$\\($f.'$id'\\)\"; try { Invoke-RestMethod -Uri $delUrl -Headers $headers -Method Delete | Out-Null; Write-Host \"Deleted file $\\($f.'$id'\\)\" } catch { Write-Host \"Failed $\\($f.'$id'\\)\" } })",
+      "PowerShell(appwrite --version 2>$null)",
+      "WebFetch(domain:appwrite.io)",
+      "WebFetch(domain:github.com)",
+      "PowerShell(adb devices 2>$null)",
+      "PowerShell(npx eas-cli --version 2>$null)",
+      "PowerShell(npm ls expo-dev-client 2>$null)",
+      "PowerShell(npx expo install expo-dev-client)",
+      "PowerShell(npx eas-cli login)",
+      "PowerShell($sdkPath = \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\"; Test-Path $sdkPath)",
+      "PowerShell($env:ANDROID_HOME = \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\"; $env:PATH += \";$env:ANDROID_HOME\\\\platform-tools\"; adb devices)",
+      "PowerShell($env:ANDROID_HOME = \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\"; $env:PATH += \";$env:ANDROID_HOME\\\\platform-tools\"; adb pair 192.168.11.58:35365)",
+      "PowerShell($env:ANDROID_HOME = \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\"; $env:PATH += \";$env:ANDROID_HOME\\\\platform-tools\"; adb pair 192.168.11.58:45019 696589)",
+      "PowerShell($env:ANDROID_HOME = \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\"; $env:PATH += \";$env:ANDROID_HOME\\\\platform-tools\"; adb pair 192.168.11.58:35123 201966)",
+      "PowerShell($endpoint = \"https://fra.cloud.appwrite.io/v1\"; $project = \"6a159b4d000f669ad1a9\"; $key = \\(Get-Content .env.local | Where-Object { $_ -match '^APPWRITE_API_KEY=' } | ForEach-Object { $_ -replace '^APPWRITE_API_KEY=', '' }\\); $headers = @{ \"X-Appwrite-Project\" = $project; \"X-Appwrite-Key\" = $key; \"Content-Type\" = \"application/json\" }; $body = @{ key = \"recorded_by\"; type = \"string\"; required = $false; size = 255; default = \"\" } | ConvertTo-Json; Invoke-RestMethod -Uri \"$endpoint/databases/naatal/collections/audio_files/attributes/string\" -Method Post -Headers $headers -Body $body)"
+    ],
+    "additionalDirectories": [
+      "c:\\projects\\naatal\\naatal\\app\\contract"
+    ]
+  },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   }

@@ -7,8 +7,9 @@ import {
   RefreshControl,
   StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import { useContractStore } from '../../store/contractStore';
@@ -56,9 +57,11 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchContracts();
+    }, [fetchContracts])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -122,8 +125,9 @@ export default function Home() {
           </Text>
           <Pressable
             onPress={fetchContracts}
-            style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 24, backgroundColor: colors.surface, borderRadius: 12 }}
+            style={{ marginTop: 16, paddingVertical: 12, paddingHorizontal: 24, backgroundColor: colors.surface, borderRadius: 12, flexDirection: 'row', gap: 8, alignItems: 'center' }}
           >
+            <Ionicons name="refresh" size={18} color={colors.green} />
             <Text style={{ color: colors.green, fontWeight: '600' }}>Réessayer</Text>
           </Pressable>
         </View>
@@ -154,18 +158,19 @@ export default function Home() {
         />
       )}
 
-      {/* FAB */}
+      {/* New contract button */}
       <Pressable
         onPress={handleNewContract}
         style={({ pressed }) => [
           styles.fab,
           {
             bottom: insets.bottom + 24,
-            transform: [{ scale: pressed ? 0.95 : 1 }],
+            transform: [{ scale: pressed ? 0.97 : 1 }],
           },
         ]}
       >
-        <Text style={styles.fabIcon}>+</Text>
+        <Ionicons name="add-circle" size={24} color="white" />
+        <Text style={styles.fabText}>Nouveau contrat</Text>
       </Pressable>
     </View>
   );
@@ -220,9 +225,11 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    left: 20,
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 16,
     backgroundColor: colors.green,
     alignItems: 'center',
     justifyContent: 'center',
@@ -232,5 +239,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
   },
-  fabIcon: { color: 'white', fontSize: 28, fontWeight: '400' },
+  fabText: { color: 'white', fontSize: 17, fontWeight: '700' },
 });

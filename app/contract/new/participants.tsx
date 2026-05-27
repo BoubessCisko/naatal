@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import { useContractStore } from '../../../store/contractStore';
 import { useAuthStore } from '../../../store/authStore';
@@ -228,11 +229,14 @@ export default function Participants() {
           {creating ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text
-              style={[styles.ctaText, { color: !isValid ? colors.muted : 'white' }]}
-            >
-              Créer le contrat et inviter
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="send" size={18} color={!isValid || creating ? colors.muted : 'white'} />
+              <Text
+                style={[styles.ctaText, { color: !isValid || creating ? colors.muted : 'white' }]}
+              >
+                Créer et inviter
+              </Text>
+            </View>
           )}
         </Pressable>
       </View>

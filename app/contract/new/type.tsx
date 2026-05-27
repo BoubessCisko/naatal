@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import { useContractStore } from '../../../store/contractStore';
 import type { ContractType } from '../../../types';
@@ -69,14 +70,17 @@ export default function ContractType() {
             },
           ]}
         >
-          <Text
-            style={[
-              styles.ctaText,
-              { color: !selected ? colors.muted : 'white' },
-            ]}
-          >
-            Continuer
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="arrow-forward" size={20} color={!selected ? colors.muted : 'white'} />
+            <Text
+              style={[
+                styles.ctaText,
+                { color: !selected ? colors.muted : 'white' },
+              ]}
+            >
+              Continuer
+            </Text>
+          </View>
         </Pressable>
       </View>
     </View>

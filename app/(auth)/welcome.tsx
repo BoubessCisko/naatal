@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../constants/colors';
 
 export default function Welcome() {
@@ -15,7 +16,19 @@ export default function Welcome() {
       }}
     >
       <View style={{ alignItems: 'center', gap: 24 }}>
-        <Text style={{ color: colors.green, fontSize: 56, fontWeight: '700' }}>
+        <View
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 24,
+            backgroundColor: 'rgba(0,168,132,0.15)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="shield-checkmark" size={44} color={colors.green} />
+        </View>
+        <Text style={{ color: colors.green, fontSize: 48, fontWeight: '800' }}>
           Naatal
         </Text>
         <Text
@@ -33,7 +46,7 @@ export default function Welcome() {
             color: colors.muted,
             fontSize: 14,
             textAlign: 'center',
-            marginTop: 16,
+            marginTop: 8,
           }}
         >
           Enregistrez. Validez. Verrouillez.{'\n'}En moins de 2 minutes.
@@ -46,9 +59,13 @@ export default function Welcome() {
           backgroundColor: pressed ? colors.greenDark : colors.green,
           paddingVertical: 16,
           borderRadius: 14,
+          flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
         })}
       >
+        <Ionicons name="arrow-forward-circle" size={22} color="white" />
         <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
           Commencer
         </Text>

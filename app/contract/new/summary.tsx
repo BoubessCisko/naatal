@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable, Image, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../../constants/colors';
@@ -118,7 +119,10 @@ export default function Summary() {
             { backgroundColor: pressed ? colors.greenDark : colors.green },
           ]}
         >
-          <Text style={styles.ctaText}>Ajouter des documents</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="attach" size={20} color="white" />
+            <Text style={styles.ctaText}>Ajouter des documents</Text>
+          </View>
         </Pressable>
       </View>
     </View>

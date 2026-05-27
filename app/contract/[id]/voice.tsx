@@ -10,15 +10,16 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../constants/colors';
 import { QUESTIONS } from '../../../constants/questions';
 import type { QuestionTarget, GuidedQuestion } from '../../../constants/questions';
+import * as FileSystem from 'expo-file-system/legacy';
 import AudioRecorder from '../../../components/AudioRecorder';
 import AudioPlayer from '../../../components/AudioPlayer';
 import {
   account,
   databases,
-  storage,
   realtime,
   DB_ID,
   COLLECTIONS,
@@ -26,7 +27,7 @@ import {
   Query,
   Channel,
 } from '../../../lib/appwrite';
-import { uploadAndSaveAudio, deleteAudioWithFile } from '../../../lib/audioUpload';
+import { saveAudioMetadata, deleteAudioWithFile } from '../../../lib/audioUpload';
 import type { ContractDoc, ContractPartyDoc, AudioFileDoc } from '../../../types';
 import type { ContractType } from '../../../types';
 
@@ -88,6 +89,8 @@ export default function VoiceRecording() {
   const [parties, setParties] = useState<ContractPartyDoc[]>([]);
   const [audios, setAudios] = useState<AudioFileDoc[]>([]);
   const [audioUrls, setAudioUrls] = useState<Map<string, string>>(new Map());
+  // Local URIs from the recorder — used for playback before upload
+  const localUrisRef = useRef<Map<string, string>>(new Map());
   const [myUserId, setMyUserId] = useState('');
   const [uploading, setUploading] = useState(false);
   const [rerecording, setRerecording] = useState(false);
@@ -118,19 +121,27 @@ export default function VoiceRecording() {
 
   const myAudioThisQuestion = myRole === 'party1' ? currentRec?.party1 : currentRec?.party2;
 
-  // Resolve authenticated URLs for audio files
+  // Resolve playable URLs for audios we didn't record ourselves
   useEffect(() => {
     const resolve = async () => {
       const newUrls = new Map(audioUrls);
       let changed = false;
       for (const a of audios) {
-        if (!newUrls.has(a.file_id)) {
+        if (newUrls.has(a.$id)) continue;
+        // Check if we have a local URI from our own recording
+        const localUri = localUrisRef.current.get(a.$id);
+        if (localUri) {
+          newUrls.set(a.$id, localUri);
+          changed = true;
+        } else if (a.file_id) {
+          // Remote file (uploaded) — get authenticated URL
           try {
             const url = await getAuthenticatedFileUrl(a.file_id);
-            newUrls.set(a.file_id, url);
+            newUrls.set(a.$id, url);
             changed = true;
           } catch {}
         }
+        // If no file_id and no local URI → other party's unuploaded audio, can't play yet
       }
       if (changed && mountedRef.current) setAudioUrls(newUrls);
     };
@@ -254,15 +265,18 @@ export default function VoiceRecording() {
     if (!contractId || !isMyTurnRef.current) return;
     setUploading(true);
     try {
-      await uploadAndSaveAudio({
-        uri,
+      const docId = await saveAudioMetadata({
+        localUri: uri,
         contractId,
         questionIndex: currentQIRef.current,
         durationMs,
         partyUserIds: [p1Id, p2Id].filter(Boolean),
       });
+      // Store local URI for playback (before upload)
+      localUrisRef.current.set(docId, uri);
+      setAudioUrls((prev) => new Map(prev).set(docId, uri));
     } catch (e) {
-      Alert.alert('Erreur', e instanceof Error ? e.message : 'Upload échoué.');
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Enregistrement échoué.');
     } finally {
       if (mountedRef.current) setUploading(false);
     }
@@ -327,7 +341,7 @@ export default function VoiceRecording() {
     return 'Les deux';
   };
 
-  const getFileUrl = (fileId: string) => audioUrls.get(fileId);
+  const getAudioUrl = (docId: string) => audioUrls.get(docId);
 
   const visibleQuestions = questions.slice(0, currentQuestionIndex + 1);
 
@@ -374,7 +388,7 @@ export default function VoiceRecording() {
                 <Text style={styles.bubbleText}>{q.text}</Text>
               </View>
 
-              {needsParty1(q.target) && rec?.party1 && getFileUrl(rec.party1.file_id) && (
+              {needsParty1(q.target) && rec?.party1 && (
                 <View style={styles.bubbleOut}>
                   <View style={styles.audioHeader}>
                     <Text style={styles.turnLabel}>{party1Label}</Text>
@@ -386,14 +400,20 @@ export default function VoiceRecording() {
                       </Pressable>
                     )}
                   </View>
-                  <AudioPlayer
-                    uri={getFileUrl(rec.party1.file_id)!}
-                    durationMs={(rec.party1.duration_seconds ?? 0) * 1000}
-                  />
+                  {getAudioUrl(rec.party1.$id) ? (
+                    <AudioPlayer
+                      uri={getAudioUrl(rec.party1.$id)!}
+                      durationMs={(rec.party1.duration_seconds ?? 0) * 1000}
+                    />
+                  ) : (
+                    <View style={styles.recordedBadge}>
+                      <Text style={styles.recordedText}>✓ Audio enregistré ({rec.party1.duration_seconds}s)</Text>
+                    </View>
+                  )}
                 </View>
               )}
 
-              {needsParty2(q.target) && rec?.party2 && getFileUrl(rec.party2.file_id) && (
+              {needsParty2(q.target) && rec?.party2 && (
                 <View style={styles.bubbleOut}>
                   <View style={styles.audioHeader}>
                     <Text style={styles.turnLabel}>{party2Label}</Text>
@@ -405,10 +425,16 @@ export default function VoiceRecording() {
                       </Pressable>
                     )}
                   </View>
-                  <AudioPlayer
-                    uri={getFileUrl(rec.party2.file_id)!}
-                    durationMs={(rec.party2.duration_seconds ?? 0) * 1000}
-                  />
+                  {getAudioUrl(rec.party2.$id) ? (
+                    <AudioPlayer
+                      uri={getAudioUrl(rec.party2.$id)!}
+                      durationMs={(rec.party2.duration_seconds ?? 0) * 1000}
+                    />
+                  ) : (
+                    <View style={styles.recordedBadge}>
+                      <Text style={styles.recordedText}>✓ Audio enregistré ({rec.party2.duration_seconds}s)</Text>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -434,7 +460,10 @@ export default function VoiceRecording() {
               { backgroundColor: pressed ? colors.greenDark : colors.green },
             ]}
           >
-            <Text style={styles.finishText}>Voir le résumé du contrat</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="document-text" size={20} color="white" />
+              <Text style={styles.finishText}>Voir le résumé du contrat</Text>
+            </View>
           </Pressable>
         ) : currentComplete ? (
           <Pressable
@@ -444,9 +473,12 @@ export default function VoiceRecording() {
               { backgroundColor: pressed ? colors.greenDark : colors.green },
             ]}
           >
-            <Text style={styles.finishText}>
-              {isLastQuestion ? 'Terminer' : 'Question suivante →'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name={isLastQuestion ? 'checkmark-circle' : 'arrow-forward'} size={20} color="white" />
+              <Text style={styles.finishText}>
+                {isLastQuestion ? 'Terminer' : 'Question suivante'}
+              </Text>
+            </View>
           </Pressable>
         ) : isMyTurn && !myAudioThisQuestion ? (
           <>
@@ -521,6 +553,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 20,
   },
   waitingText: { color: colors.muted, fontSize: 14, fontWeight: '600' },
+  recordedBadge: {
+    backgroundColor: 'rgba(0,168,132,0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  recordedText: { color: colors.green, fontSize: 13, fontWeight: '600' },
   finishButton: { paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginBottom: 4 },
   finishText: { color: 'white', fontSize: 16, fontWeight: '600' },
 });

@@ -8,10 +8,17 @@ import {
 
 const MAX_DURATION_S = 120;
 
+// Use .mp4 instead of .m4a — Expo Go on Android creates unreadable .m4a files.
+// Same AAC codec, just different container extension.
+const RECORDING_OPTIONS = {
+  ...RecordingPresets.HIGH_QUALITY,
+  extension: '.m4a',
+};
+
 export type RecorderStatus = 'idle' | 'recording' | 'stopping' | 'done';
 
 export function useNaatalRecorder() {
-  const recorder = useExpoRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useExpoRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder);
   const [status, setStatus] = useState<RecorderStatus>('idle');
   const [uri, setUri] = useState<string | null>(null);
@@ -67,6 +74,7 @@ export function useNaatalRecorder() {
     try {
       await recorder.stop();
     } catch {}
+    await new Promise((r) => setTimeout(r, 2000));
     const finalUri = recorder.uri;
     setUri(finalUri);
     setStatus(finalUri ? 'done' : 'idle');
