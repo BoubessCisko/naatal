@@ -1,4 +1,5 @@
-import { Client, Account, Databases, Storage, Functions, ID, Query, Permission, Role } from 'react-native-appwrite';
+import { Client, Account, Databases, Storage, Functions, Realtime, ID, Query, Permission, Role } from 'react-native-appwrite';
+import { Channel } from 'react-native-appwrite';
 
 const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
@@ -37,4 +38,6 @@ export const BUCKETS = {
   files: 'files',
 } as const;
 
-export { ID, Query, Permission, Role };
+export const realtime = new Realtime(client);
+
+export { ID, Query, Permission, Role, Channel };

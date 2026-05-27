@@ -8,14 +8,14 @@
 ## 📊 Vue d'ensemble
 
 ```
-Phase 0 — Setup           ██████████ 100%  (app testée Expo Go Android — manque juste Phone Auth + Twilio)
-Phase 1 — Auth + KYC      ░░░░░░░░░░  0%
-Phase 2 — Audio           ░░░░░░░░░░  0%
-Phase 3 — Contrat         ░░░░░░░░░░  0%
-Phase 4 — Dossier final   ░░░░░░░░░░  0%
-Phase 5 — Tests terrain   ░░░░░░░░░░  0%
+Phase 0 — Setup           ██████████ 100%
+Phase 1 — Auth + KYC      ██████████ 100%  (welcome, login, OTP, KYC, auth store — testée sur Android)
+Phase 2 — Audio           ██████████ 100%  (hook, recorder, player, upload, Realtime sync)
+Phase 3 — Contrat         ██████████ 100%  (type, participants, invite, voice multi-device, summary, documents, payment)
+Phase 4 — Dossier final   ██████████ 100%  (OTP validation, lock-contract Function, hash, PDF, QR, contract detail)
+Phase 5 — Tests terrain   ░░░░░░░░░░  0%   (à faire : test 2 téléphones, 3G, terrain)
 
-TOTAL MVP                 █░░░░░░░░░ 15%
+TOTAL MVP                 █████████░ 90%   (code terminé — reste tests + déploiement Appwrite)
 ```
 
 ---
@@ -73,11 +73,68 @@ TOTAL MVP                 █░░░░░░░░░ 15%
 3. (Optionnel dev) ajouter des mockNumbers pour tester l'OTP sans consommer de SMS
 4. Lancer `npx expo start` → scanner QR dans Expo Go Android → écran "Setup Phase 0 OK" doit s'afficher
 
+### 27 mai 2026 — Phases 2, 3, 4 complètes + refonte multi-device
+
+**Phase 2 — Audio** :
+- ✅ `hooks/useAudioRecorder.ts` (expo-audio, 120s max, auto-stop, loading state)
+- ✅ `components/AudioRecorder.tsx` (pulse animation, timer, re-record)
+- ✅ `components/AudioPlayer.tsx` (play/pause, waveform bars, progress)
+- ✅ `lib/audioUpload.ts` (FileSystem.uploadAsync REST, SHA-256 hash, `recorded_by` field)
+- ✅ `lib/formatTime.ts` (shared utility)
+- ✅ Enregistrement testé sur Android physique — fonctionne
+
+**Phase 3 — Contrat (architecture multi-device)** :
+- ✅ `store/contractStore.ts` (Zustand — contractId, type, parties, audios, documents)
+- ✅ `app/contract/new/type.tsx` (grille 2x2 : Vente, Prêt, Service, Location)
+- ✅ `app/contract/new/participants.tsx` (crée le contrat + parties dans Appwrite immédiatement)
+- ✅ `app/contract/new/invite.tsx` (QR code, WhatsApp, SMS — avec lien contractId)
+- ✅ `app/contract/join.tsx` (party 2 rejoint, claim son slot, permissions mises à jour)
+- ✅ `app/contract/[id]/voice.tsx` (chat vocal multi-device avec Appwrite Realtime)
+- ✅ `app/contract/new/summary.tsx` (détails, parties, audios, documents, frais 3000 FCFA)
+- ✅ `app/contract/new/documents.tsx` (upload photos/documents, caméra + galerie)
+- ✅ `app/contract/new/payment.tsx` (initiateur uniquement, Wave/OM, active le contrat)
+- ✅ `app/(tabs)/index.tsx` (liste contrats Appwrite, FAB, pull-to-refresh, erreur state)
+- ✅ Questions guidées par rôle (Prêteur/Emprunteur, Vendeur/Acheteur, etc.)
+
+**Phase 4 — Validation + dossier final** :
+- ✅ `app/contract/validate.tsx` (OTP par partie, marque has_validated, auto-active si tous validés)
+- ✅ `app/contract/[id]/index.tsx` (détail contrat, QR code, hash, PDF, lock, actions par rôle)
+- ✅ `lib/hash.ts` (SHA-256 integrity hash : contract + parties + audio hashes + timestamp)
+- ✅ `lib/pdf.ts` (HTML template → expo-print, watermark Naatal, partage expo-sharing)
+- ✅ `appwrite/functions/lock-contract/` (Function Node — retire Permission.update, écrit audit log)
+
+**Refonte multi-device** :
+- ✅ Chaque partie sur son propre téléphone, son propre compte
+- ✅ Appwrite Realtime synchronise le chat vocal entre les deux appareils
+- ✅ `recorded_by` field dans audio_files — attribution fiable par userId
+- ✅ Permissions : les deux parties lisent, seul l'auteur peut modifier son propre audio
+- ✅ Re-enregistrement possible sur la question courante uniquement (questions passées = verrouillées)
+- ✅ Suppression Storage + doc lors du re-enregistrement (pas de fichiers orphelins)
+- ✅ URLs audio authentifiées par JWT
+- ✅ Cleanup Realtime subscriptions safe (cancelled flag, mountedRef)
+
+**Code review effectuée — 12 bugs corrigés** :
+- buildAudioMap utilisait $permissions (cassé) → utilise recorded_by
+- audio_files permission read uniquement pour l'uploadeur → les deux parties
+- Hash base64 chunked cassé → lecture complète (max 10MB acceptable)
+- Fichiers Storage orphelins lors du re-record → deleteAudioWithFile()
+- handleNextQuestion catch vide → Alert erreur + guard optimistic locking
+- Realtime cleanup race condition → cancelled flag
+- audioUrl sans auth → JWT en query param
+- handleRecordingComplete stale closure → useRef
+
+**⏳ Reste à faire (action utilisateur)** :
+1. Ajouter colonne `recorded_by` (string, required) à la collection `audio_files` dans Appwrite Console
+2. Déployer la Function `lock-contract` : `appwrite push functions`
+3. Tester le flow complet sur 2 téléphones Android simultanément
+4. Tester sur connexion 3G
+5. Tests terrain avec commerçants
+
 ---
 
 ## 🔴 Blocages actuels
 
-*Aucun blocage pour le moment — projet non démarré*
+*Aucun blocage — code MVP terminé, en attente de tests*
 
 ---
 
@@ -125,19 +182,25 @@ TOTAL MVP                 █░░░░░░░░░ 15%
 
 ## 🔄 Prochaine session
 
-**Objectif :** Phase 1 — Auth (welcome / login / OTP / KYC).
+**Objectif :** Phase 5 — Tests sur vrais appareils + tests terrain.
 
-**Prérequis avant de coder Phase 1 (action utilisateur) :**
-1. Projet Appwrite Cloud créé + Project ID dans `.env.local`
-2. Collections + buckets déployés via `appwrite push` (ou créés manuellement)
-3. Phone Auth activé + Provider Twilio configuré dans Messaging
-4. `npx expo start` lance l'app, Expo Go Android affiche bien "Setup Phase 0 OK"
+**Prérequis avant de tester (action utilisateur) :**
+1. Ajouter colonne `recorded_by` (string, required) à `audio_files` dans Appwrite Console
+2. Déployer Function `lock-contract` via `appwrite push functions`
+3. (Optionnel) Configurer Twilio pour OTP réel
+
+**Plan de test :**
+1. Test flow complet A→Z sur 1 Android (mode dev OTP)
+2. Test multi-device : 2 téléphones, Realtime sync du chat vocal
+3. Test sur connexion 3G lente
+4. Test re-enregistrement + verrouillage questions
+5. Test PDF + partage
+6. Tests terrain avec 5-10 commerçants
 
 **Message à donner à Claude au début de la prochaine session :**
 ```
-Lis CLAUDE.md + PROGRESS.md. On commence Phase 1 du projet Naatal (Auth + KYC).
-État actuel : Phase 0 terminée, app démarre, Supabase configuré.
-Cette session : welcome → login → OTP → KYC en suivant TASKS.md sections 1.1 → 1.5.
+Lis contexe/PROGRESS.md. Code MVP terminé (Phases 0-4).
+On passe aux tests Phase 5. Problèmes trouvés : [décrire].
 ```
 
 ---
@@ -147,7 +210,7 @@ Cette session : welcome → login → OTP → KYC en suivant TASKS.md sections 1
 *Espace libre pour noter les observations terrain, idées, feedback utilisateurs*
 
 ---
-*Dernière mise à jour : 24 mai 2026*
+*Dernière mise à jour : 27 mai 2026*
 
 ---
 

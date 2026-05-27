@@ -33,7 +33,7 @@ const config: ExpoConfig = {
     favicon: './assets/favicon.png',
     bundler: 'metro',
   },
-  plugins: ['expo-router', 'expo-font'],
+  plugins: ['expo-router', 'expo-font', 'expo-audio', 'expo-sharing'],
   experiments: {
     // typedRoutes désactivé temporairement — à réactiver quand on aura besoin de l'autocomplete
     // sur tous les écrans (sinon force à régénérer .expo/types/router.d.ts à chaque ajout d'écran).

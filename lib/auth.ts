@@ -31,6 +31,9 @@ export async function verifyOtp(
   code: string,
   phone: string
 ): Promise<void> {
+  // Kill any stale session before creating a new one
+  try { await account.deleteSession('current'); } catch {}
+
   if (USE_REAL_OTP) {
     await account.createSession(userId, code);
   } else {

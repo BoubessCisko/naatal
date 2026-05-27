@@ -44,12 +44,14 @@ export default function RootLayout() {
     const inTabsGroup = seg[0] === '(tabs)';
     const onKyc = seg[1] === 'kyc';
 
+    const inAppScreen = inTabsGroup || seg[0] === 'contract';
+
     if (!profile) {
       if (!inAuthGroup) router.replace('/(auth)/welcome');
     } else if (!profile.cni_verified) {
       if (!onKyc) router.replace('/(auth)/kyc');
     } else {
-      if (!inTabsGroup) router.replace('/(tabs)');
+      if (!inAppScreen) router.replace('/(tabs)');
     }
   }, [profile, isLoading, segments, navState?.key]);
 

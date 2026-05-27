@@ -48,6 +48,7 @@ export type AudioFileDoc = AppwriteDoc & {
   file_id: string; // $id Appwrite Storage
   duration_seconds: number | null;
   file_hash: string;
+  recorded_by: string; // userId of who recorded
 };
 
 export type AuditLogDoc = AppwriteDoc & {
